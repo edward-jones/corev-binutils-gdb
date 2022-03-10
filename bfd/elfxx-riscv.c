@@ -2457,6 +2457,8 @@ riscv_multi_subset_supports (riscv_parse_subset_t *rps,
 	      && riscv_subset_supports (rps, "zmmul");
     case INSN_CLASS_ZCMP:
       return riscv_subset_supports (rps, "zcmp");
+    case INSN_CLASS_ZCMT:
+      return riscv_subset_supports (rps, "zcmt");
     case INSN_CLASS_SVINVAL:
       return riscv_subset_supports (rps, "svinval");
     case INSN_CLASS_H:
