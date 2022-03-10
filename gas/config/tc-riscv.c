@@ -77,6 +77,7 @@ enum riscv_csr_class
   CSR_CLASS_ZKR,	/* zkr only */
   CSR_CLASS_V,		/* rvv only */
   CSR_CLASS_DEBUG,	/* debug CSR */
+  CSR_CLASS_ZCMT,	/* zcmt only */
   CSR_CLASS_H,		/* hypervisor */
   CSR_CLASS_H_32,	/* hypervisor, rv32 only */
   CSR_CLASS_SMAIA,		/* Smaia */
@@ -1142,6 +1143,10 @@ riscv_csr_address (const char *csr_name,
       break;
     case CSR_CLASS_DEBUG:
       break;
+    case CSR_CLASS_ZCMT:
+      result = riscv_subset_supports (&riscv_rps_as, "zcmt");
+      need_check_version = false;
+      break;
     default:
       as_bad (_("internal: bad RISC-V CSR class (0x%x)"), csr_class);
     }
@@ -1511,6 +1516,9 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
 		case 'p': used_bits |= ENCODE_ZCMP_SPIMM (-1U); break;
 		/* register list operand for cm.push and cm.pop. */
 		case 'r': USE_BITS (OP_MASK_RLIST, OP_SH_RLIST); break;
+		/* table jump index operand.  */
+		case 'i':
+		case 'I': used_bits |= ENCODE_ZCMP_TABLE_JUMP_INDEX (-1U); break;
 		default:
 		  goto unknown_validate_operand;
 		}
@@ -3391,6 +3399,31 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 			break;
 		      INSERT_OPERAND (SREG2, *ip, regno % 8);
 		      continue;
+
+		    case 'I': /* index operand of cm.jt. The range is from 0 to 63. */
+		      my_getExpression (imm_expr, asarg);
+		      if (imm_expr->X_op != O_constant
+			  || imm_expr->X_add_number < 0
+			  || imm_expr->X_add_number > 63)
+			{
+			  as_bad ("bad index value for cm.jt, range: [0, 63]");
+			  break;
+			}
+		      ip->insn_opcode |= ENCODE_ZCMP_TABLE_JUMP_INDEX (imm_expr->X_add_number);
+		      goto rvc_imm_done;
+
+		    case 'i': /* index operand of cm.jalt. The range is from 64 to 255. */
+		      my_getExpression (imm_expr, asarg);
+		      if (imm_expr->X_op != O_constant
+			  || imm_expr->X_add_number < 64
+			  || imm_expr->X_add_number > 255)
+			{
+			  as_bad ("bad index value for cm.jalt, range: [64, 255]");
+			  break;
+			}
+		      ip->insn_opcode |= ENCODE_ZCMP_TABLE_JUMP_INDEX (imm_expr->X_add_number);
+		      goto rvc_imm_done;
+
 		    default:
 		      goto unknown_riscv_ip_operand;
 		    }
@@ -4781,6 +4814,13 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
       break;
 
     case BFD_RELOC_RISCV_JMP:
+      /* j and jal can be relaxed into cm.jalt or cm.jt if zcmt is used. */
+      if (riscv_subset_supports (&riscv_rps_as, "zcmt"))
+	{
+	  relaxable = true;
+	  fixP->fx_tcbit = riscv_opts.relax;
+	}
+
       if (fixP->fx_addsy)
 	{
 	  /* Fill in a tentative value to improve objdump readability.  */
@@ -5295,7 +5335,24 @@ md_convert_frag_branch (fragS *fragp)
 	    /* Invert the branch condition.  Branch over the jump.  */
 	    insn = bfd_getl16 (buf);
 	    insn ^= MATCH_C_BEQZ ^ MATCH_C_BNEZ;
-	    insn |= ENCODE_CBTYPE_IMM (6);
+
+	    if (riscv_subset_supports (&riscv_rps_as, "zcmt"))
+	      {
+		symbolS *sym = symbol_new (FAKE_LABEL_NAME , now_seg, fragp,
+				     fragp->fr_fix + fragp->fr_var);
+		fixp = fix_new (fragp,
+				buf - (bfd_byte *)fragp->fr_literal,
+				2,
+				sym,
+				0,
+				false,
+				BFD_RELOC_RISCV_RVC_BRANCH);
+		fixp->fx_file = fragp->fr_file;
+		fixp->fx_line = fragp->fr_line;
+	      }
+	    else
+	      insn |= ENCODE_CBTYPE_IMM (6);
+
 	    bfd_putl16 (insn, buf);
 	    buf += 2;
 	    goto jump;
@@ -5322,7 +5379,25 @@ md_convert_frag_branch (fragS *fragp)
       /* Invert the branch condition.  Branch over the jump.  */
       insn = bfd_getl32 (buf);
       insn ^= MATCH_BEQ ^ MATCH_BNE;
-      insn |= ENCODE_BTYPE_IMM (8);
+
+      if (riscv_subset_supports (&riscv_rps_as, "zcmt"))
+	{
+	  symbolS *sym = (symbolS *) local_symbol_make (
+		    FAKE_LABEL_NAME, now_seg, fragp,
+		    fragp->fr_fix + fragp->fr_var);
+	  fixp = fix_new (fragp,
+			  buf - (bfd_byte *)fragp->fr_literal,
+			  4,
+			  sym,
+			  0,
+			  false,
+			  BFD_RELOC_12_PCREL);
+	  fixp->fx_file = fragp->fr_file;
+	  fixp->fx_line = fragp->fr_line;
+	}
+      else
+	insn |= ENCODE_BTYPE_IMM (8);
+
       bfd_putl32 (insn, buf);
       buf += 4;
 

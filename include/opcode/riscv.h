@@ -144,6 +144,8 @@ static inline unsigned int riscv_insn_length (insn_t insn)
   (RV_X(x, 5, 1) << 1)
 #define EXTRACT_ZCMP_SPIMM(x) \
   (RV_X(x, 2, 2) << 4)
+#define EXTRACT_ZCMP_TABLE_JUMP_INDEX(x) \
+  (RV_X(x, 2, 8))
 
 #define ENCODE_ITYPE_IMM(x) \
   (RV_X(x, 0, 12) << 20)
@@ -218,6 +220,8 @@ static inline unsigned int riscv_insn_length (insn_t insn)
   (RV_X(x, 1, 1) << 5)
 #define ENCODE_ZCMP_SPIMM(x) \
   (RV_X(x, 4, 2) << 2)
+#define ENCODE_ZCMP_TABLE_JUMP_INDEX(x) \
+  (RV_X(x, 0, 8) << 2)
 
 #define VALID_ITYPE_IMM(x) (EXTRACT_ITYPE_IMM(ENCODE_ITYPE_IMM(x)) == (x))
 #define VALID_STYPE_IMM(x) (EXTRACT_STYPE_IMM(ENCODE_STYPE_IMM(x)) == (x))
@@ -524,6 +528,7 @@ enum riscv_insn_class
   INSN_CLASS_ZCB_AND_ZBB,
   INSN_CLASS_ZCB_AND_ZMMUL,
   INSN_CLASS_ZCMP,
+  INSN_CLASS_ZCMT,
   INSN_CLASS_H,
   INSN_CLASS_XTHEADBA,
   INSN_CLASS_XTHEADBB,
