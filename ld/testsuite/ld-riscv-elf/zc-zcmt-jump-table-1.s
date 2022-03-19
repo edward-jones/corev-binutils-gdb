@@ -1,0 +1,49 @@
+.macro PADDING_32_BYTES
+	.option push
+	.option arch, -zcmt
+	.option arch, -zca
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	.option pop
+.endm
+
+.macro PADDING_256_BYTES
+	PADDING_32_BYTES
+	PADDING_32_BYTES
+	PADDING_32_BYTES
+	PADDING_32_BYTES
+	PADDING_32_BYTES
+	PADDING_32_BYTES
+	PADDING_32_BYTES
+	PADDING_32_BYTES
+.endm
+
+.macro PADDING_2048_BYTES
+	PADDING_256_BYTES
+	PADDING_256_BYTES
+	PADDING_256_BYTES
+	PADDING_256_BYTES
+	PADDING_256_BYTES
+	PADDING_256_BYTES
+	PADDING_256_BYTES
+	PADDING_256_BYTES
+.endm
+
+	.option relax
+	.globl _start
+	.type _start, @function
+_start:
+	c.beqz s0, FLIP_C_BRANCH_AND_JUMP
+	c.bnez s0, FLIP_C_BRANCH_AND_JUMP
+	PADDING_2048_BYTES
+	PADDING_2048_BYTES
+FLIP_C_BRANCH_AND_JUMP:
+	c.beqz s0, 4
+	c.bnez s0,_start
+	ret

@@ -31,6 +31,9 @@ struct riscv_elf_params
 {
   /* Whether to relax code sequences to GP-relative addressing.  */
   bool relax_gp;
+
+  /* Whether to force the generation of table jumps when Zcmt is enabled.  */
+  bool zcmt_force_table_jump;
 };
 
 extern void riscv_elf32_set_options (struct bfd_link_info *,
