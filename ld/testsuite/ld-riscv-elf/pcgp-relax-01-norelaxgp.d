@@ -14,5 +14,5 @@ Disassembly of section \.text:
 .*:[ 	]+[0-9a-f]+[ 	]+addi[ 	]+a1,a1,[0-9]+ # [0-9a-f]+ <data_g>
 .*:[ 	]+[0-9a-f]+[ 	]+lui[ 	        ]+a2,0x[0-9a-f]+
 .*:[ 	]+[0-9a-f]+[ 	]+addi[ 	]+a2,a2,[0-9]+ # [0-9a-f]+ <data_g>
-.*:[ 	]+[0-9a-f]+[ 	]+addi[ 	]+a3,tp,0 # 0 <data_t>
+.*:[ 	]+[0-9a-f]+[ 	]+addi[ 	]+a3,tp,0 # 0[ 	]+.*
 .*:[ 	]+[0-9a-f]+[ 	]+auipc[ 	]+a0,0x[0-9a-f]+

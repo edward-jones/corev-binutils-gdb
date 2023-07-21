@@ -18,14 +18,14 @@ Disassembly of section .text:
 
 .+ <EXPAND_TO_BRANCH>:
 [	 ]*[0-9a-f]+:[	 ]+c019[	 ]+c.beqz[	 ]+s0,10c.+
-[^:]+: R_RISCV_RVC_BRANCH[	]+\.L0
+[^:]+: R_RISCV_RVC_BRANCH[	]+\.L0 
 [	 ]*[0-9a-f]+:[	 ]+0040106f[	 ]+jal[	 ]+zero,110c.+
 [^:]+: R_RISCV_JAL[	]+FLIP_C_BRANCH_AND_JUMP
 #...
 
 .+ <FLIP_C_BRANCH_AND_JUMP>:
 [	 ]*[0-9a-f]+:[	 ]+00041463[	 ]+bne[	 ]+s0,zero,1114.+
-[^:]+: R_RISCV_BRANCH[	]+\.L0
+[^:]+: R_RISCV_BRANCH[	]+\.L0 
 [	 ]*[0-9a-f]+:[	 ]+0000006f[	 ]+jal[	 ]+zero,1110.+
 [^:]+: R_RISCV_JAL[	]+\*ABS\*\-0x4
 [	 ]*[0-9a-f]+:[	 ]+8082[	 ]+c.jr[	 ]+ra

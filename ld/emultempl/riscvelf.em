@@ -52,7 +52,7 @@ PARSE_AND_LIST_LONGOPTS=${PARSE_AND_LIST_LONGOPTS}'
 PARSE_AND_LIST_OPTIONS=${PARSE_AND_LIST_OPTIONS}'
   fprintf (file, _("  --relax-gp                  Perform GP relaxation\n"));
   fprintf (file, _("  --no-relax-gp               Don'\''t perform GP relaxation\n"));
-  fprintf (file, _("  --zcmt-force-table-jump     Force emission of Zcmt table jump instructions"));
+  fprintf (file, _("  --zcmt-force-table-jump     Force emission of Zcmt table jump instructions\n"));
 '
 
 PARSE_AND_LIST_ARGS_CASES=${PARSE_AND_LIST_ARGS_CASES}'

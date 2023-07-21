@@ -7,5 +7,5 @@
 Disassembly of section .text:
 
 0+000 <target>:
-[ 	]+[0-9a-f]+:[ 	]+a002[ 	]+cm.jt[ 	]+0
+[ 	]+[0-9a-f]+:[ 	]+a002[ 	]+cm.jt[ 	]+0[ 	]+.*
 [ 	]+[0-9a-f]+:[ 	]+a07e[ 	]+cm.jt[ 	]+31

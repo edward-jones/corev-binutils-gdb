@@ -14,7 +14,7 @@ Disassembly of section .text:
 [^:]+: R_RISCV_JAL[	]+Far
 [^:]+: R_RISCV_RELAX[	 ]+\*ABS\*
 [	 ]*[0-9a-f]+:[	 ]+c019[	 ]+c.beqz[	 ]+s0,c.+
-[^:]+: R_RISCV_RVC_BRANCH[	]+\.L0
+[^:]+: R_RISCV_RVC_BRANCH[	]+\.L0 
 [	 ]*[0-9a-f]+:[	 ]+0040106f[	 ]+jal[	 ]+zero,100c.+
 [^:]+: R_RISCV_JAL[	 ]+Far
 [^:]+: R_RISCV_RELAX[	 ]+\*ABS\*

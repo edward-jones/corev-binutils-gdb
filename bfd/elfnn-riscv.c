@@ -810,6 +810,7 @@ riscv_use_table_jump (struct bfd_link_info *info)
 
   if (!riscv_parse_subset (&riscv_rps_ld_out, out_attr[Tag_RISCV_arch].s))
     return false;
+  subsets.arch_str = riscv_arch_str(ARCH_SIZE, &subsets);
 
   ret = riscv_subset_supports (&riscv_rps_ld_out, "zcmt");
   riscv_release_subset_list (&subsets);
@@ -4642,12 +4643,11 @@ _bfd_riscv_table_jump_mark (bfd *abfd ATTRIBUTE_UNUSED, asection *sec,
 		       bool undefined_weak ATTRIBUTE_UNUSED)
 {
   bfd_byte *contents = elf_section_data (sec)->this_hdr.contents;
-  bfd_vma location = ELFNN_R_TYPE (rel->r_info) == R_RISCV_JAL ?
-				    contents + rel->r_offset
-				  : contents + rel->r_offset + 4;
+  bfd_byte *location = ELFNN_R_TYPE (rel->r_info) == R_RISCV_JAL ?
+				      contents + rel->r_offset
+				    : contents + rel->r_offset + 4;
   bfd_vma target = bfd_getl32 (location);
   int rd = (target >> OP_SH_RD) & OP_MASK_RD;
-  const char *name = riscv_get_symbol_name (abfd, rel);
   htab_t tbljal_htab = riscv_get_table_jump_htab (link_info, rd);
 
   /* Check if it uses a valid link register. */
@@ -4702,11 +4702,11 @@ _bfd_riscv_relax_call (bfd *abfd, asection *sec, asection *sym_sec,
 
   /* Relax a table jump instruction that is marked. */
   if (link_info->relax_pass == 1
-	&& ((auipc ^ MATCH_TABLE_JUMP) & MASK_CM_JALT) == 0)
+	&& (auipc & MASK_CM_JALT) == MATCH_TABLE_JUMP)
     {
       rel->r_info = ELFNN_R_INFO (ELFNN_R_SYM (rel->r_info), R_RISCV_TABLE_JUMP);
       *again = true;
-      return riscv_relax_delete_bytes (abfd, sec, rel->r_offset + 2, 6, link_info, pcgp_relocs);
+      return riscv_relax_delete_bytes (abfd, sec, rel->r_offset + 2, 6, link_info, pcgp_relocs, rel + 1);
     }
 
   /* See if this function call can be shortened.  */
@@ -5180,16 +5180,13 @@ _bfd_riscv_record_jal (bfd *abfd,
   htab_t tbljal_htab = riscv_get_table_jump_htab (link_info, rd);
   const char *name = riscv_get_symbol_name (abfd, rel);
 
-  struct riscv_elf_link_hash_table *htab = riscv_elf_hash_table (link_info);
-  riscv_table_jump_htab_t *tbj_htab = htab->table_jump_htab;
-
   if (link_info->relax_pass == 1
-      && ((jal ^ MATCH_TABLE_JUMP) & MASK_CM_JALT) == 0)
+      && (jal & MASK_CM_JT) == MATCH_TABLE_JUMP)
     {
       rel->r_info = ELFNN_R_INFO (ELFNN_R_SYM (rel->r_info), R_RISCV_TABLE_JUMP);
       *again = true;
       return riscv_relax_delete_bytes (abfd, sec,
-		  rel->r_offset + 2, 2, link_info, pcgp_relocs);
+		  rel->r_offset + 2, 2, link_info, pcgp_relocs, rel + 1);
     }
 
   if (tbljal_htab == NULL
@@ -5369,6 +5366,20 @@ _bfd_riscv_relax_section (bfd *abfd, asection *sec,
 						 info->keep_memory)))
     goto fail;
 
+  /* Read this BFD's contents if we haven't done so already.  */
+  if (!data->this_hdr.contents
+      && !bfd_malloc_and_get_section (abfd, sec, &data->this_hdr.contents))
+    goto fail;
+
+  /* Read this BFD's symbols if we haven't done so already.  */
+  if (symtab_hdr->sh_info != 0
+      && !symtab_hdr->contents
+      && !(symtab_hdr->contents =
+	   (unsigned char *) bfd_elf_get_elf_syms (abfd, symtab_hdr,
+						   symtab_hdr->sh_info,
+						   0, NULL, NULL, NULL)))
+    goto fail;
+
   if (htab)
     {
       max_alignment = htab->max_alignment;
@@ -5398,7 +5409,7 @@ _bfd_riscv_relax_section (bfd *abfd, asection *sec,
       instructions with the index encoded.
 
      relax_trip 3: Trim unused slots in the table jump section.  */
-
+  riscv_relax_delete_bytes = _riscv_relax_delete_immediate;
   if (info->relax_pass == 0
       && riscv_use_table_jump (info))
     {
@@ -5434,7 +5445,8 @@ _bfd_riscv_relax_section (bfd *abfd, asection *sec,
 	      jvt_sym->root.u.def.section = bfd_abs_section_ptr;
 	      return riscv_relax_delete_bytes (table_jump_htab->tablejump_sec_owner,
 				table_jump_htab->tablejump_sec,
-				0, table_jump_htab->tablejump_sec->size, info, NULL);
+				0, table_jump_htab->tablejump_sec->size, info,
+				NULL, NULL);
 	    }
 	  else if (table_jump_htab->tablejump_sec->size == 0)
 	    return true;
@@ -5455,7 +5467,7 @@ _bfd_riscv_relax_section (bfd *abfd, asection *sec,
 	  /* Trim unused slots.  */
 	  if (!riscv_relax_delete_bytes (table_jump_htab->tablejump_sec_owner,
 				table_jump_htab->tablejump_sec,
-				used_bytes, trimmed_bytes, info, NULL))
+				used_bytes, trimmed_bytes, info, NULL, NULL))
 	    return false;
 	  /* Mark table jump profiling stage as completed.  */
 	  table_jump_htab->end_idx = -1;
@@ -5547,20 +5559,6 @@ _bfd_riscv_relax_section (bfd *abfd, asection *sec,
 	}
 
       data->relocs = relocs;
-
-      /* Read this BFD's contents if we haven't done so already.  */
-      if (!data->this_hdr.contents
-	  && !bfd_malloc_and_get_section (abfd, sec, &data->this_hdr.contents))
-	goto fail;
-
-      /* Read this BFD's symbols if we haven't done so already.  */
-      if (symtab_hdr->sh_info != 0
-	  && !symtab_hdr->contents
-	  && !(symtab_hdr->contents =
-	       (unsigned char *) bfd_elf_get_elf_syms (abfd, symtab_hdr,
-						       symtab_hdr->sh_info,
-						       0, NULL, NULL, NULL)))
-	goto fail;
 
       /* Get the value of the symbol referred to by the reloc.  */
       if (ELFNN_R_SYM (rel->r_info) < symtab_hdr->sh_info)
