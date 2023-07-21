@@ -4750,13 +4750,14 @@ _bfd_riscv_relax_call (bfd *abfd, asection *sec, asection *sym_sec,
       if (link_info->relax_trip != 0)
 	return true;
 
+      struct riscv_elf_link_hash_table *htab = riscv_elf_hash_table (link_info);
       htab_t tbljal_htab = riscv_get_table_jump_htab (link_info, rd);
       const char *name = riscv_get_symbol_name (abfd, rel);
       unsigned int benefit = len - 2;
 
       if (tbljal_htab == NULL
 	  || name == NULL
-	  || benefit == 0)
+	  || (benefit == 0 && !htab->params->zcmt_force_table_jump))
 	return true;
 
       return riscv_update_table_jump_entry (tbljal_htab, symval, benefit, name);
@@ -5232,7 +5233,9 @@ riscv_ranking_table_jump (void **entry_ptr, void *_arg)
   while (left < right)
     {
       unsigned int mid = (left + right) / 2;
-      if (savings[mid] == entry->benefit)
+      /* `entry->benefit != 0` helps prioritize entries with a zero benefits.
+	 This is useful when the option --zcmt-force-table-jump is used.  */
+      if (savings[mid] == entry->benefit && entry->benefit != 0)
 	{
 	  left = mid;
 	  break;
@@ -5422,7 +5425,8 @@ _bfd_riscv_relax_section (bfd *abfd, asection *sec,
 	    jump instruction if not.  */
 	  if (table_jump_htab->total_saving <=
 			  table_jump_htab->end_idx * RISCV_ELF_WORD_BYTES
-	      && table_jump_htab->tablejump_sec->size > 0)
+	      && table_jump_htab->tablejump_sec->size > 0
+	      && !htab->params->zcmt_force_table_jump)
 	    {
 	      jvt_sym = elf_link_hash_lookup (elf_hash_table (info),
 			RISCV_TABLE_JUMP_BASE_SYMBOL,

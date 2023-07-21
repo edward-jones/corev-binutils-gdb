@@ -25,7 +25,11 @@ fragment <<EOF
 #include "elf/riscv.h"
 #include "elfxx-riscv.h"
 
-static struct riscv_elf_params params = { .relax_gp = 1 };
+static struct riscv_elf_params params =
+{
+  .relax_gp = 1,
+  .zcmt_force_table_jump = 0,
+};
 EOF
 
 # Define some shell vars to insert bits of code into the standard elf
@@ -35,17 +39,20 @@ enum risccv_opt
 {
   OPTION_RELAX_GP = 321,
   OPTION_NO_RELAX_GP,
+  OPTION_ZCMT_FORCE_JT,
 };
 '
 
 PARSE_AND_LIST_LONGOPTS=${PARSE_AND_LIST_LONGOPTS}'
     { "relax-gp", no_argument, NULL, OPTION_RELAX_GP },
     { "no-relax-gp", no_argument, NULL, OPTION_NO_RELAX_GP },
+    { "zcmt-force-table-jump", no_argument, NULL, OPTION_ZCMT_FORCE_JT },
 '
 
 PARSE_AND_LIST_OPTIONS=${PARSE_AND_LIST_OPTIONS}'
   fprintf (file, _("  --relax-gp                  Perform GP relaxation\n"));
   fprintf (file, _("  --no-relax-gp               Don'\''t perform GP relaxation\n"));
+  fprintf (file, _("  --zcmt-force-table-jump     Force emission of Zcmt table jump instructions"));
 '
 
 PARSE_AND_LIST_ARGS_CASES=${PARSE_AND_LIST_ARGS_CASES}'
@@ -55,6 +62,10 @@ PARSE_AND_LIST_ARGS_CASES=${PARSE_AND_LIST_ARGS_CASES}'
 
     case OPTION_NO_RELAX_GP:
       params.relax_gp = 0;
+      break;
+
+    case OPTION_ZCMT_FORCE_JT:
+      params.zcmt_force_table_jump = 1;
       break;
 '
 
